@@ -40,7 +40,7 @@
 #include <iostream>
 #include "nan.h"
 
-#define DEBUG
+// #define DEBUG
 #ifdef DEBUG
     #define LOG(msg) std::cout << "[ZeroMQ.js] " << msg << std::endl;
 #else

@@ -2,7 +2,6 @@
   'variables': {
     'zmq_external%': 'false',
     'openssl_fips': '',
-    "debug": 'false',
   },
   'targets': [
     {
@@ -61,9 +60,6 @@
               'cflags_cc': [ '-std=c++17' ],
             }],
           ],
-        }],
-        ["debug == 'true'", {
-          "defines": ["DEBUG"]
         }]
       ],
     }
