@@ -2,6 +2,7 @@
   'variables': {
     'zmq_external%': 'false',
     'openssl_fips': '',
+    "debug": 'false',
   },
   'targets': [
     {
@@ -61,6 +62,9 @@
             }],
           ],
         }],
+        ["debug == 'true'", {
+          "defines": ["DEBUG"]
+        }]
       ],
     }
   ]

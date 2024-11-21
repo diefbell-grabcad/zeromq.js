@@ -37,7 +37,15 @@
 #include <errno.h>
 #include <stdexcept>
 #include <set>
+#include <iostream>
 #include "nan.h"
+
+#define DEBUG
+#ifdef DEBUG
+    #define LOG(msg) std::cout << "[ZeroMQ.js] " << msg << std::endl;
+#else
+    #define LOG(msg) // No operation if DEBUG is not defined
+#endif
 
 #ifdef _WIN32
 # define snprintf _snprintf_s
@@ -77,6 +85,7 @@ namespace zmq {
 
     private:
       Context(int io_threads);
+      static void Cleanup(void* data);
       static NAN_METHOD(New);
       static Context *GetContext(const Nan::FunctionCallbackInfo<Value>&);
       void Close();
@@ -87,6 +96,10 @@ namespace zmq {
 #endif
 
       void* context_;
+
+      void RegisterSocket(Socket* socket);
+      void UnregisterSocket(Socket* socket);
+      std::set<Socket*> sockets_;
   };
 
   class Socket : public Nan::ObjectWrap {
@@ -239,7 +252,11 @@ namespace zmq {
         return Nan::ThrowRangeError("io_threads must be a positive number");
       }
     }
+
     Context *context = new Context(io_threads);
+    LOG("Created new context");
+    
+    node::AddEnvironmentCleanupHook(v8::Isolate::GetCurrent(), Context::Cleanup, context);
     context->Wrap(info.This());
     info.GetReturnValue().Set(info.This());
   }
@@ -247,6 +264,31 @@ namespace zmq {
   Context::Context(int io_threads) : Nan::ObjectWrap() {
     context_ = zmq_init(io_threads);
     if (!context_) Nan::ThrowError(ErrorMessage());
+  }
+
+  void Context::Cleanup(void* data) {
+    Context* instance = static_cast<Context*>(data);
+
+    if(instance) {
+      LOG("Trying to clean up context with " + std::to_string(instance->sockets_.size()) + " socket(s)...");
+      for(auto it = instance->sockets_.begin(); it != instance->sockets_.end(); it++) {
+        LOG("\tTrying to clean up socket...")
+        Socket* socket = *it;
+        delete socket;
+        LOG("\tSocket cleaned up during environment shutdown");
+      }
+
+      delete instance;
+      LOG("Context cleaned up during environment shutdown\n");
+    }
+  }
+
+  void Context::RegisterSocket(Socket* socket) {
+    sockets_.insert(socket);
+  }
+
+  void Context::UnregisterSocket(Socket* socket) {
+    sockets_.erase(socket);
   }
 
   Context *
@@ -365,6 +407,8 @@ namespace zmq {
     int type = Nan::To<int>(info[1]).FromJust();
 
     Socket *socket = new Socket(context, type);
+    LOG("Created new socket");
+
     socket->Wrap(info.This());
     info.GetReturnValue().Set(info.This());
   }
@@ -583,6 +627,8 @@ namespace zmq {
 
     uv_poll_init_socket(uv_default_loop(), poll_handle_, socket);
     uv_poll_start(poll_handle_, UV_READABLE, Socket::UV_PollCallback);
+
+    context->RegisterSocket(this);
   }
 
   Socket *
@@ -1365,6 +1411,13 @@ namespace zmq {
       }
       socket_ = NULL;
       state_ = STATE_CLOSED;
+
+      if(!context_.IsEmpty()) {
+        v8::Local<v8::Object> obj = Nan::New(context_);
+        Context* context = Nan::ObjectWrap::Unwrap<Context>(obj);
+        context->UnregisterSocket(this);
+      }
+
       context_.Reset();
 
       if (this->endpoints > 0)

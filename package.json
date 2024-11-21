@@ -29,6 +29,8 @@
     "build:libzmq": "node-gyp rebuild",
     "prebuildify": "prebuildify -t 18.12.1 -t 16.18.1 -t 14.21.1 -t 12.22.12 -t electron@11.5.0 -t electron@21.2.3 --strip",
     "prebuildify-ia32": "prebuildify --arch=ia32 -t 18.12.1 -t 16.18.1 -t 14.21.1 -t 12.22.12 -t electron@11.5.0 -t electron@21.2.3 --strip",
+    "prebuildify:dev": "prebuildify --env DEBUG=true -t 18.12.1 -t 16.18.1 -t 14.21.1 -t 12.22.12 -t electron@11.5.0 -t electron@21.2.3",
+    "prebuildify-ia32:dev": "prebuildify --env DEBUG=true --arch=ia32 -t 18.12.1 -t 16.18.1 -t 14.21.1 -t 12.22.12 -t electron@11.5.0 -t electron@21.2.3",
     "build:docs": "jsdoc -R README.md -d docs lib/*.js",
     "test": "mocha --expose-gc --slow 300",
     "test:electron": "electron-mocha --slow 300",
