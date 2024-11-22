@@ -40,7 +40,7 @@
 #include <iostream>
 #include "nan.h"
 
-// #define DEBUG
+#define DEBUG
 #ifdef DEBUG
     #define LOG(msg) std::cout << "[ZeroMQ.js] " << msg << std::endl;
 #else
@@ -271,13 +271,6 @@ namespace zmq {
 
     if(instance) {
       LOG("Trying to clean up context with " + std::to_string(instance->sockets_.size()) + " socket(s)...");
-      for(auto it = instance->sockets_.begin(); it != instance->sockets_.end(); it++) {
-        LOG("\tTrying to clean up socket...")
-        Socket* socket = *it;
-        delete socket;
-        LOG("\tSocket cleaned up during environment shutdown");
-      }
-
       delete instance;
       LOG("Context cleaned up during environment shutdown\n");
     }
@@ -298,6 +291,14 @@ namespace zmq {
 
   void
   Context::Close() {
+    for(auto it = sockets_.begin(); it != sockets_.end(); it++) {
+      LOG("\tTrying to clean up socket...")
+      Socket* socket = *it;
+      UnregisterSocket(socket);
+      delete socket;
+      LOG("\tSocket cleaned up during environment shutdown");
+    }
+
     if (context_ != NULL) {
       if (zmq_term(context_) < 0) {
         Nan::ThrowError(ErrorMessage());
@@ -1415,7 +1416,9 @@ namespace zmq {
       if(!context_.IsEmpty()) {
         v8::Local<v8::Object> obj = Nan::New(context_);
         Context* context = Nan::ObjectWrap::Unwrap<Context>(obj);
-        context->UnregisterSocket(this);
+        if(context) {
+          context->UnregisterSocket(this);
+        }
       }
 
       context_.Reset();
